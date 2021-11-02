@@ -1,0 +1,34 @@
+for j in range (5):
+        U,V = initialUV(2,global_mean,global_std)
+        
+        rmse_list_train=[]
+        mae_list_train=[]
+        rmse_list_test=[]
+        mae_list_test=[]
+        for i in range (epochs):
+            
+            if permutation:
+                updateU_per(U,V,matrices_train[j])
+                updateV_per(U,V,matrices_train[j])
+            
+            else:
+                updateU(U,V,matrices_train[j])
+                updateV(U,V,matrices_train[j])
+            rmse,mae = rmse_mae(U,V,matrices_train[j])
+            rmse_test,mae_test = rmse_mae(U,V,matrices_test[j])
+            rmse_list_train.append(rmse)
+            mae_list_train.append(mae)
+            rmse_list_test.append(rmse_test)
+            mae_list_test.append(mae_test)
+        
+        
+           
+        rmse_list_train_mean.append(rmse_list_train)
+        mae_list_train_mean.append(mae_list_train)
+        rmse_list_test_mean.append(rmse_list_test)
+        mae_list_test_mean.append(mae_list_test)
+        
+        rmse_train_mean = np.mean(np.array(rmse_list_train_mean))
+        mae_train_mean = np.mean(np.array(mae_list_train_mean))
+        rmse_test_mean = np.mean(np.array(rmse_list_test_test))
+        mae_test_mean = np.mean(np.array(mae_list_test_mean))
