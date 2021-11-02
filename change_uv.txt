@@ -27,7 +27,7 @@ for j in range (5):
         mae_list_train_mean.append(mae_list_train)
         rmse_list_test_mean.append(rmse_list_test)
         mae_list_test_mean.append(mae_list_test)
-        
+       
         rmse_train_mean = np.mean(np.array(rmse_list_train_mean))
         mae_train_mean = np.mean(np.array(mae_list_train_mean))
         rmse_test_mean = np.mean(np.array(rmse_list_test_test))
