@@ -1,0 +1,63 @@
+def uv_decomposition(epochs,matrices_train,matrices_test,permutation):
+    ##calculate the global mean for the initial value in the U,V matrix.
+    global_mean = ratings['Rating'].mean()
+    global_std = ratings['Rating'].std()
+    
+    
+
+    ##calculate the number of nonblank values in the training matrix and test matrix
+    non_nan_train = np.count_nonzero(~np.isnan(matrices_train[0]))
+    non_nan_test = np.count_nonzero(~np.isnan(matrices_test[0]))
+
+    
+    rmse_list_train_mean=[]
+    mae_list_train_mean=[]
+    rmse_list_test_mean=[]
+    mae_list_test_mean=[]
+    
+        
+    for j in range (5):
+        U,V = initialUV(2,global_mean,global_std)
+        
+        rmse,mae = rmse_mae(U,V,matrices_train[0])
+        print('initial_rmse',rmse)
+        print('initial_mae',mae)
+
+        rmse,mae = rmse_mae(U,V,matrices_test[0])
+        print('initial_rmse_test',rmse)
+        print('initial_mae_test',mae)
+
+        
+        rmse_list_train=[]
+        mae_list_train=[]
+        rmse_list_test=[]
+        mae_list_test=[]
+        for i in range (epochs):
+            
+            if permutation:
+                updateU_per(U,V,matrices_train[j])
+                updateV_per(U,V,matrices_train[j])
+            
+            else:
+                updateU(U,V,matrices_train[j])
+                updateV(U,V,matrices_train[j])
+            rmse,mae = rmse_mae(U,V,matrices_train[j])
+            rmse_test,mae_test = rmse_mae(U,V,matrices_test[j])
+            rmse_list_train.append(rmse)
+            mae_list_train.append(mae)
+            rmse_list_test.append(rmse_test)
+            mae_list_test.append(mae_test)
+        
+        
+           
+        rmse_list_train_mean.append(rmse_list_train)
+        mae_list_train_mean.append(mae_list_train)
+        rmse_list_test_mean.append(rmse_list_test)
+        mae_list_test_mean.append(mae_list_test)
+        
+    rmse_train_mean = np.mean(np.array(rmse_list_train_mean),axis=0)
+    mae_train_mean = np.mean(np.array(mae_list_train_mean),axis=0)
+    rmse_test_mean = np.mean(np.array(rmse_list_test_mean),axis=0)
+    mae_test_mean = np.mean(np.array(mae_list_test_mean),axis=0)
+    
+    return rmse_train_mean,mae_train_mean,rmse_test_mean,mae_test_mean
