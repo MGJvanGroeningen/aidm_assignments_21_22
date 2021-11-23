@@ -113,69 +113,6 @@ def make_random_projections(n_projections, n_movies):
                           shape=(n_projections, n_movies), dtype=np.float32)
                           
                           
-def find_js_pairs(sps_rating_matrix, signatures, b, permutations_per_band, threshold):
-    """
-    Find similar user pairs in a sparse rating matrix with the Jaccard similarity method.
-
-    sps_rating_matrix: scipy.sparse.csr_matrix, sparse row matrix where each row contains
-    the movie ratings of a user
-    signatures: array, matrix with a number of signatures for each user
-    b: int, band index
-    projections_per_band: int, the number of projections in each band
-    threshold: float, should be a value between 0 and 1.
-    """
-    pair_arr = np.array([])
-    
-    start_of_band = b * permutations_per_band
-    end_of_band = (b + 1) * permutations_per_band
-    
-    band = signatures[start_of_band:end_of_band, :]
-    key, inds, invs = np.unique(band, axis=1, return_index=True, return_inverse=True)
-    
-    for ind in inds:
-        bucket = np.where(invs == ind)[0]
-        if len(bucket) > 1:
-            pairs = unique_pairs_from_array(bucket)
-            sim_list = np.array(list(map(sign_js_sim, repeat(signatures), pairs)))
-            pair_4_true = pairs[sim_list > threshold]
-            true_sims = np.array(list(map(true_js_sim, repeat(sps_rating_matrix), pair_4_true)))
-            if len(true_sims[true_sims > threshold] > 0):
-                if len(pair_arr) != 0:
-                    pair_arr = np.concatenate((pair_arr, pair_4_true[true_sims > threshold]), axis=0)
-                else:
-                    pair_arr = pair_4_true[true_sims > threshold]
-        
-    return pair_arr
-
-
-def js_main(sps_rating_matrix, n_bands, permutations_per_band, threshold):
-    """
-    Main function for running the Jaccard Similarity method
-
-    sps_rating_matrix: scipy.sparse.csr_matrix, sparse row matrix where each row contains
-    n_bands: int, the number of bands to use for LSH
-    permutations_per_band: int, the number of permutations in each band
-    threshold: float, should be a value between 0 and 1.
-    """
-
-    print('number of bands:', n_bands)
-    print('number of permutations per band:', permutations_per_band)
-
-    n_permutations = n_bands * permutations_per_band
-    signatures = js_signatures(sps_rating_matrix, n_permutations)
-    
-    pair_list = []
-    for band in range(n_bands):
-        pairs = find_js_pairs(sps_rating_matrix, signatures, band, permutations_per_band, threshold)
-        if len(pairs) > 0:
-            pair_list.append(pairs)
-    pair_list = np.unique(np.concatenate(pair_list, axis=0), axis=0)
-    
-    print(f'Number of pairs with Jaccard sim > {threshold}:', len(pair_list))
-    
-    return pair_list
-
- 
 def cs_signatures(sps_rating_matrix, n_projections):
     """
     Create signatures for each user by taking the dot product with random projections.
@@ -194,6 +131,50 @@ def cs_signatures(sps_rating_matrix, n_projections):
     signatures = ((v * sps_rating_matrix.T).toarray() > 0).astype(np.int32)
     
     return signatures
+
+
+def find_js_pairs(sps_rating_matrix, signatures, b, permutations_per_band, threshold):
+    """
+    Find similar user pairs in a sparse rating matrix with the Jaccard similarity method.
+
+    sps_rating_matrix: scipy.sparse.csr_matrix, sparse row matrix where each row contains
+    the movie ratings of a user
+    signatures: array, matrix with a number of signatures for each user
+    b: int, band index
+    projections_per_band: int, the number of projections in each band
+    threshold: float, should be a value between 0 and 1.
+    """
+    jaccard_pairs = np.array([])
+    
+    start_of_band = b * permutations_per_band
+    end_of_band = (b + 1) * permutations_per_band
+    
+    band = signatures[start_of_band:end_of_band, :]
+    key, inds, invs = np.unique(band, axis=1, return_index=True, return_inverse=True)
+    
+    for ind in inds:
+        bucket = np.where(invs == ind)[0]
+        if len(bucket) > 1:
+            candidate_pairs = unique_pairs_from_array(bucket)
+            
+            signature_similarities = []
+            for pair in candidate_pairs:
+                signature_similarities.append(sign_js_sim(signatures, pair))
+            
+            signature_pairs = candidate_pairs[np.array(signature_similarities) > threshold]
+            
+            jaccard_similarities = []
+            for pair in signature_pairs:
+                jaccard_similarities.append(true_js_sim(sps_rating_matrix, pair))
+            
+            jaccard_similarities = np.array(jaccard_similarities)
+            if len(jaccard_similarities[jaccard_similarities > threshold] > 0):
+                if len(jaccard_pairs) != 0:
+                    jaccard_pairs = np.concatenate((jaccard_pairs, signature_pairs[jaccard_similarities > threshold]), axis=0)
+                else:
+                    jaccard_pairs = signature_pairs[jaccard_similarities > threshold]
+        
+    return jaccard_pairs
 
 
 def find_candidate_pairs(signatures, n_bands, projections_per_band):
@@ -215,7 +196,7 @@ def find_candidate_pairs(signatures, n_bands, projections_per_band):
         end_of_band = min(start_of_band + projections_per_band, n_projections)
         band = signatures[start_of_band:end_of_band, :]
 
-        # The signature of each user is an array of 1s and 0s. We can treat this as a binary number 
+        # The signatures of each user make up an array of 1s and 0s. We can treat this as a binary number 
         # to give each user an integer value as its signature.
         band = np.dot(binary_array, band).T
 
@@ -226,8 +207,8 @@ def find_candidate_pairs(signatures, n_bands, projections_per_band):
         for u in unique_signatures:
             indices_of_unique_signature = np.where(band == u)[0]
 
-            # If more than 1 index is found, it means that multiple users have the same signature
-            # and are likely to be similar
+            # If more than 1 index is found, it means that multiple users have the same signatures
+            # in the band and are likely to be similar
             if indices_of_unique_signature.shape[0] > 1:
                 pairs_with_unique_signature = unique_pairs_from_array(indices_of_unique_signature)
                 candidate_pairs.append(pairs_with_unique_signature)
@@ -285,6 +266,34 @@ def find_cosine_pairs(signature_pairs, csr, threshold=0.73):
     cosine_pairs = signature_pairs[np.array(cosine_similarities) > threshold]
     
     return cosine_pairs
+
+
+def js_main(sps_rating_matrix, n_bands, permutations_per_band, threshold):
+    """
+    Main function for running the Jaccard Similarity method
+
+    sps_rating_matrix: scipy.sparse.csr_matrix, sparse row matrix where each row contains
+    n_bands: int, the number of bands to use for LSH
+    permutations_per_band: int, the number of permutations in each band
+    threshold: float, should be a value between 0 and 1.
+    """
+
+    print('number of bands:', n_bands)
+    print('number of permutations per band:', permutations_per_band)
+
+    n_permutations = n_bands * permutations_per_band
+    signatures = js_signatures(sps_rating_matrix, n_permutations)
+    
+    pair_list = []
+    for band in range(n_bands):
+        pairs = find_js_pairs(sps_rating_matrix, signatures, band, permutations_per_band, threshold)
+        if len(pairs) > 0:
+            pair_list.append(pairs)
+    pair_list = np.unique(np.concatenate(pair_list, axis=0), axis=0)
+    
+    print(f'Number of pairs with Jaccard sim > {threshold}:', len(pair_list))
+    
+    return pair_list
 
 
 def cs_main(sps_rating_matrix, n_bands, projections_per_band, threshold):
