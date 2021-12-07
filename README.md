@@ -7,4 +7,4 @@ A2 report
 https://www.overleaf.com/3122289547jgkcrtkjtsby
 
 
-Assignment 3 dataset https://www.kaggle.com/iamhungundji/covid19-symptoms-checker
+Assignment 3 dataset https://archive.ics.uci.edu/ml/datasets/Divorce+Predictors+data+set
