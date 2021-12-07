@@ -1,0 +1,3 @@
+wget https://archive.ics.uci.edu/ml/machine-learning-databases/00497/divorce.rar
+unrar e divorce.rar
+rm -rf divorce.rar
