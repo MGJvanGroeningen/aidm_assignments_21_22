@@ -18,4 +18,4 @@ Alternatively, download manually using the following link
 
 https://archive.ics.uci.edu/ml/machine-learning-databases/00497/divorce.rar
 
-and unpack the .rar file in a `data` directory located in the directory containing the jupyter notebooks.
+and unpack the divorce.rar file in a `data` directory located in the directory containing the jupyter notebooks.
